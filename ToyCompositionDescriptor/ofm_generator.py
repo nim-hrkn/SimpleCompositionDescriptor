@@ -49,7 +49,6 @@ def obtain_df_ofm_2d(v: ArrayLike):
     columns = ["C"]
     columns.extend(GENERAL_ELECTRON_SUBSHELLS)
     v = v.reshape(n + 1, n)
-    print(v.shape)
     _df = pd.DataFrame(v, columns=GENERAL_ELECTRON_SUBSHELLS, index=columns)
     return _df
 
@@ -80,10 +79,10 @@ def get_element_representation(name='Si'):
     return np.array([general_element_electronic[key] for key in general_electron_subshells])
 
 
-def ofm(struct: Structure, is_ofm1=True, is_including_d=True):
+def ofm(struct: Structure, is_ofm1=True, is_including_d=True,):
     atoms = np.array([site.species_string for site in struct])
 
-    local_xyz = []
+    # local_xyz = []
     local_orbital_field_matrices = []
     N = len(GENERAL_ELECTRON_SUBSHELLS)
     for i_atom, atom in enumerate(atoms):
@@ -95,16 +94,16 @@ def ofm(struct: Structure, is_ofm1=True, is_including_d=True):
         center_vector = get_element_representation(atom)
         env_vector = np.zeros(N)
 
-        atom_xyz = [atom]
-        coords_xyz = [site.coords]
+        # atom_xyz = [atom]
+        # coords_xyz = [site.coords]
 
         for nn in neighbors:
 
             site_x = nn['site']
             w = nn['weight']
             site_x_label = site_x.species_string
-            atom_xyz += [site_x_label]
-            coords_xyz += [site_x.coords]
+            # atom_xyz += [site_x_label]
+            # coords_xyz += [site_x.coords]
             neigh_vector = get_element_representation(site_x_label)
             d = np.sqrt(np.sum((site.coords - site_x.coords)**2))
             if is_including_d:
@@ -119,7 +118,7 @@ def ofm(struct: Structure, is_ofm1=True, is_including_d=True):
 
         local_matrix = np.ravel(local_matrix)  # ravel to make 2024-Dimensional vector
         local_orbital_field_matrices.append(local_matrix)
-        local_xyz.append({"atoms": np.array(atom_xyz), "coords": np.array(coords_xyz)})
+        # local_xyz.append({"atoms": np.array(atom_xyz), "coords": np.array(coords_xyz)})
 
     local_orbital_field_matrices = np.array(local_orbital_field_matrices)
     material_descriptor = np.mean(local_orbital_field_matrices, axis=0)
@@ -127,95 +126,115 @@ def ofm(struct: Structure, is_ofm1=True, is_including_d=True):
     return {'mean': material_descriptor,
             'locals': local_orbital_field_matrices,
             'atoms': atoms,
-            "local_xyz": local_xyz,
+            # "local_xyz": local_xyz,
             'cif': struct.to(fmt='cif', filename=None)}
 
 
-def _obtain_sub_structures(structure):
-    lattice = structure.lattice
-    frac_coords_list = []
-    for site in structure.sites:
-        frac_coords_list.append(site.frac_coords)
+def ofm_alloy(struct: Structure, is_ofm1=True, is_including_d=True,):
 
-    species_dicts = []
-    for site in structure.sites:
-        species = site.species.as_dict()
-        species_dicts.append(species)
+    # local_xyz = []
+    local_orbital_field_matrices = []
+    N = len(GENERAL_ELECTRON_SUBSHELLS)
+    # for i_atom, atom in enumerate(atoms):
+    for i_atom, site in enumerate(struct):
 
-    values_list = []
-    for d in species_dicts:
-        values = [value for value in d.values()]
-        values_list.append(np.sum(values))
-    grand_sum = np.product(values_list)
+        coordinator_finder = VoronoiNN(cutoff=10.0)
+        neighbors = coordinator_finder.get_nn_info(structure=struct, n=i_atom)
 
-    sub_structure_list = []
-    combinations = product(*[d.items() for d in species_dicts])
-    for combo in combinations:
-        elements = [key[0] for key in combo]
-        values = [key[1] for key in combo]
-        fraction = np.product(values)
-        sub_structure = Structure(lattice, elements, frac_coords_list)
-        sub_structure_list.append((fraction, sub_structure))
-    values = [f[0] for f in sub_structure_list]
-    structure_fractional_sum = np.sum(values)
-    if np.abs(structure_fractional_sum - grand_sum) > 1e-5:
-        # print(structure_fractional_sum, grand_sum)
-        print(f'possible Error, structure_fractional_sum={structure_fractional_sum} != grand_sum={grand_sum}')
-    return sub_structure_list
+        center_vector = np.zeros(N)
+        for specie, frac in site.species.as_dict().items():
+            v = get_element_representation(specie)
+            center_vector += v * frac
 
+        env_vector = np.zeros(N)
 
-def obtain_ofm_weighted_sum(result_list: list, key: str = 'mean', show_fig: bool = False) -> pd.DataFrame:
-    """
-    Calculate the weighted mean of a specified key in a list of results.
+        # atom_xyz = [atom]
+        # coords_xyz = [site.coords]
 
-    This function takes a list of results, where each result is represented as a tuple (weight, result_data),
-    and calculates the weighted mean of the specified key in the result_data.
+        for nn in neighbors:
 
-    Parameters:
-    result_list (list): A list of tuples representing results. Each tuple contains a weight and result_data.
-    key (str, optional): The key in the result_data dictionary for which the weighted mean is calculated.
-                        Default is 'mean'.
+            site_x = nn['site']
+            w = nn['weight']
+            # site_x_label = site_x.species_string
+            # atom_xyz += [site_x_label]
+            # coords_xyz += [site_x.coords]
+            neigh_vector = np.zeros(N)
+            for nn_specie, nn_frac in site_x.species.as_dict().items():
+                neigh_vector += get_element_representation(nn_specie) * nn_frac
 
-    Returns:
-    numpy.ndarray: The weighted mean of the specified key across all results.
+            d = np.sqrt(np.sum((site.coords - site_x.coords)**2))
+            if is_including_d:
+                env_vector += neigh_vector * w / d
+            else:
+                env_vector += neigh_vector * w
 
-    Examples:
-    >>> results = [(0.1, {'mean': [1, 2, 3]}), (0.2, {'mean': [4, 5, 6]})]
-    >>> obtain_weighted_mean(results)
-    array([3., 4., 5.])
-    >>> obtain_weighted_mean(results, key='median')
-    array([1., 2., 3.])
-    """
-    print(key, len(result_list), "combinations",)
-    mean_list = []
-    for weight, test in result_list:
-        print("weight", weight, "atoms", test["atoms"])
-        _v_mean = test[key]
+        if is_ofm1:
+            env_vector = np.concatenate(([1.0], env_vector))
 
-        mean_list.append(_v_mean * weight)
+        local_matrix = center_vector[None, :] * env_vector[:, None]
 
-    v_mean = np.sum(mean_list, axis=0)
-    return v_mean
+        local_matrix = np.ravel(local_matrix)  # ravel to make N*N- or N*(N+1)-Dimensional vector
+        local_orbital_field_matrices.append(local_matrix)
+        # local_xyz.append({"atoms": np.array(atom_xyz), "coords": np.array(coords_xyz)})
+
+    local_orbital_field_matrices = np.array(local_orbital_field_matrices)
+    material_descriptor = np.mean(local_orbital_field_matrices, axis=0)
+
+    atoms = [site.species.as_dict() for site in struct.sites]
+    return {'mean': material_descriptor,
+            'locals': local_orbital_field_matrices,
+            'atoms': atoms,
+            # "local_xyz": local_xyz,
+            'cif': struct.to(fmt='cif', filename=None)}
 
 
-def ofm_alloy(struct: Structure, is_ofm1=True, is_including_d=True):
-    structure = struct
-    sub_structure_list = _obtain_sub_structures(structure)
+if False:
+    def _obtain_sub_structures(structure):
 
-    result_list = []
-    for weight, sub_structure in sub_structure_list:
-        test = ofm(struct=sub_structure, is_ofm1=is_ofm1, is_including_d=is_including_d)
-        result_list.append((weight, test))
+        lattice = structure.lattice
+        frac_coords_list = [site.frac_coords for site in structure.sites]
 
-    key = 'mean'
-    ofm_mean_weighted_sum = obtain_ofm_weighted_sum(result_list, key)
+        species_dicts = [site.species.as_dict() for site in structure.sites]
 
-    key = 'locals'
-    ofm_locals_weighted_sum = obtain_ofm_weighted_sum(result_list, key)
+        combinations = product(*[d.items() for d in species_dicts])
+        for combo in combinations:
+            elements = [key[0] for key in combo]
+            values = [key[1] for key in combo]
+            fraction = np.product(values)
+            sub_structure = Structure(lattice, elements, frac_coords_list)
+            yield (fraction, sub_structure)
 
-    result = {'mean': ofm_mean_weighted_sum, 'locals': ofm_locals_weighted_sum,
-              "details": result_list}
-    return result
+if False:
+    def ofm_alloy(struct: Structure, is_ofm1=True, is_including_d=True):
+        structure = struct
+        print("ofm_alloy", structure)
+
+        ofm_mean_weighted_sum = None
+        ofm_locals_weighted_sum = None
+
+        N = 0
+        for _ in _obtain_sub_structures(structure):
+            N += 1
+
+        for index, (weight, sub_structure) in enumerate(_obtain_sub_structures(structure)):
+            print(f"sub structure {index+1}/{N}")
+            test = ofm(struct=sub_structure, is_ofm1=is_ofm1, is_including_d=is_including_d)
+            # result_list.append((weight, test))
+            if ofm_mean_weighted_sum is None:
+                ofm_mean_weighted_sum = weight * test["mean"]
+            else:
+                ofm_mean_weighted_sum += weight * test["mean"]
+
+            if ofm_locals_weighted_sum is None:
+                ofm_locals_weighted_sum = weight * test["locals"]
+            else:
+                ofm_locals_weighted_sum += weight * test["locals"]
+
+        atoms = [site.species.as_dict() for site in structure.sites]
+        cif_file = struct.to(fmt='cif', filename=None)
+        result = {'mean': ofm_mean_weighted_sum, 'locals': ofm_locals_weighted_sum,
+                  'atoms': atoms, 'cif': cif_file}
+        return result
 
 
 class OFMFeatureRepresentation:
@@ -240,11 +259,11 @@ class OFMFeatureRepresentation:
             RuntimeError: If the result does not have the required keys.
         """
         dict_keys = list(result.keys())
-        flags = ['mean' in dict_keys, 'locals' in dict_keys, 'details' in dict_keys]
+        flags = ['mean' in dict_keys, 'locals' in dict_keys, 'cif' in dict_keys]
         if np.all(flags):
             self.result = result
         else:
-            raise RuntimeError('result must be dict type with mean, locals and details keys')
+            raise RuntimeError('result must be dict type with mean, locals, atoms and cif keys')
 
     def validate_key(self, key):
         """
@@ -323,10 +342,8 @@ class OFMFeatureRepresentation:
         if key == "mean":
             return obtain_df_ofm_1d(self.result[key])
         elif key == "locals":
-            print(self.result[key].shape)
             v = []
             for v1 in self.result[key]:
-                print(v1.shape)
                 v.append(obtain_df_ofm_1d(v1))
             return v
 
@@ -394,79 +411,3 @@ class OFMGenerator:
         """
         result = ofm_alloy(struct, self.use_ofm1, self.include_distance)
         return OFMFeatureRepresentation(result)
-
-
-if __name__ == "__main__":
-    import seaborn as sns
-    from pymatgen.io.cif import CifParser
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    def _compare_mean(test, show_fig):
-        key = 'mean'
-        df_2d = test.as_2d_df(key)
-        if show_fig:
-            sns.heatmap(df_2d)
-            plt.title(key)
-            plt.show()
-
-        v_2d = test.as_2d_array(key)
-        if not np.all(v_2d == df_2d.values):
-            raise RuntimeError(f'error in {key} 2d test.')
-
-        df_1d = test.as_1d_df(key)
-
-        if not np.all(df_2d.values.ravel() == df_1d.values):
-            raise RuntimeError(f'error in {key} df 1d vs 2d test.')
-
-        v_1d = test.as_1d_array(key)
-        if not np.all(v_1d == df_1d.values):
-            raise RuntimeError(f'error in {key} 1d test.')
-
-    def _compare_locals(test, show_fig):
-
-        key = 'locals'
-        df_2d = test.as_2d_df(key)
-        if show_fig:
-            for i, v in enumerate(df_2d):
-                sns.heatmap(v)
-                plt.title(key + "/" + str(i))
-                plt.show()
-
-        v_2d = test.as_2d_array(key)
-        for v1, v2 in zip(df_2d, v_2d):
-            if not np.all(v2 == v1.values):
-                raise RuntimeError(f'error in {key} 2d test.')
-
-        df_1d = test.as_1d_df(key)
-        if not np.all(df_2d.values.ravel() == df_1d.values):
-            raise RuntimeError(f'error in {key} df 1d vs 2d test.')
-
-        v_1d = test.as_1d_array(key)
-        for v1, v2 in zip(df_1d, v_1d):
-            if not np.all(v2 == v1.values):
-                raise RuntimeError(f'error in {key} 1d test.')
-
-    def _test_cif(cif_file_path, show_fig=False):
-
-        print(cif_file_path)
-        parser = CifParser(cif_file_path)
-        structure = parser.get_structures()[0]
-        print(structure)
-
-        ofmconv = OFMGenerator()
-
-        test = ofmconv.transform(structure)
-
-        _compare_mean(test, show_fig)
-        _compare_locals(test, show_fig)
-
-        return test
-
-    cif_file_path = "materials_project_database/Nd2Fe14B.cif"
-    show_fig = True
-    test = _test_cif(cif_file_path, show_fig=show_fig)
-
-    cif_file_path = "materials_project_database/BaTiO3.cif"
-    show_fig = True
-    test = _test_cif(cif_file_path, show_fig=show_fig)
