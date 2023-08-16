@@ -24,7 +24,7 @@ GENERAL_ELECTRON_SUBSHELLS = ['s1', 's2', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6',
                               'f8', 'f9', 'f10', 'f11', 'f12', 'f13', 'f14']
 
 
-def _obtain_ofm_1d_columns(is_ofm1=True):
+def obtain_ofm_1d_columns(is_ofm1=True):
     if is_ofm1:
         v = ["C",]
     else:
@@ -40,7 +40,7 @@ def _obtain_ofm_1d_columns(is_ofm1=True):
 
 
 def obtain_df_ofm_1d(v: ArrayLike):
-    _obtain_df_ofm_1d = pd.DataFrame(v, index=_obtain_ofm_1d_columns()).T
+    _obtain_df_ofm_1d = pd.DataFrame(v, index=obtain_ofm_1d_columns()).T
     return _obtain_df_ofm_1d
 
 

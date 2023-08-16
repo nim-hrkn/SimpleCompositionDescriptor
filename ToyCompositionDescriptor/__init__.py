@@ -1,11 +1,14 @@
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 
 from .composition_feature import CompositionFeatureRepresentation, CompositionFeatureGenerator
 from .composition_onehot import ElementOneHotRepresentation, ElementOneHotGenerator
-from .ofm_generator import OFMFeatureRepresentation, OFMGenerator
+from .ofm_generator import OFMFeatureRepresentation, OFMGenerator, obtain_df_ofm_1d, obtain_df_ofm_2d, obtain_ofm_1d_columns
+from .atomicenvtype_generator import AtomicEnvTypeGenerator, AtomicEnvTypeRepresentation
 
 __all__ = [
     'CompositionFeatureRepresentation', 'CompositionFeatureGenerator',
     'ElementOneHotRepresentation', 'ElementOneHotGenerator',
-    'OFMFeatureRepresentation', 'OFMGenerator'
+    'OFMFeatureRepresentation', 'OFMGenerator', 'obtain_df_ofm_1d','obtain_df_ofm_2d',
+    'obtain_ofm_1d_columns','AtomicEnvTypeGenerator','AtomicEnvTypeRepresentation'
 ]
+
