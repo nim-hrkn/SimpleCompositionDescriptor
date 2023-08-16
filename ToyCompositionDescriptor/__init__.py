@@ -1,4 +1,4 @@
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 from .composition_feature import CompositionFeatureRepresentation, CompositionFeatureGenerator
 from .composition_onehot import ElementOneHotRepresentation, ElementOneHotGenerator

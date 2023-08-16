@@ -204,6 +204,7 @@ class CompositionFeatureRepresentation:
         df -> pd.DataFrame
             Returns the stored features as a single-row pandas DataFrame.
     """
+
     def __init__(self, dic):
         self.representation = dic
 
@@ -240,6 +241,7 @@ class CompositionFeatureGenerator:
         transform(composition: Union[str, Composition]) -> CompositionFeatureRepresentation:
             Computes the features for the given composition and returns them as a CompositionFeatureRepresentation.
     """
+
     def __init__(self, N: int = 100, filepath: Union[str, None] = None, generation: bool = False):
         self.df_element = self.fit(N=N, filepath=filepath, generation=generation)
 
@@ -248,6 +250,8 @@ class CompositionFeatureGenerator:
             current_file_path = os.path.abspath(__file__)
             current_file_path_splitted = os.path.split(current_file_path)
             filepath = os.path.join(current_file_path_splitted[0], FILENAME)
+            if not os.path.isfile(filepath):
+                filepath = FILENAME
 
         elm_names = make_elmnames()
         if not os.path.isfile(filepath):
@@ -255,7 +259,12 @@ class CompositionFeatureGenerator:
                 df = make_element_descriptor_from_Z(elm_names)
                 df.to_csv(filepath, index=False)
             else:
-                raise RuntimeError(f'failed to find file {filepath}')
+                msg = [f'Failed to find file {filepath}.',
+                       f'{FILENAME} is necessary.',
+                       'Call CompositionFeatureGenerator(..., generation=True) first.',
+                       'Or execute `python ToyCompositionDescriptor/element_feature_generator.py`.']
+
+                raise RuntimeError("\n".join(msg))
         else:
             df = pd.read_csv(filepath)
         return pd.read_csv(filepath).set_index("name")
