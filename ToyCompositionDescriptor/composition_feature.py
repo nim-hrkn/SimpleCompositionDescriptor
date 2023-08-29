@@ -211,6 +211,10 @@ class CompositionFeatureRepresentation:
     def as_dict(self):
         return self.representation
 
+    @property
+    def dict(self):
+        return self.representation
+    
     def as_df(self):
         return pd.DataFrame([self.representation])
 
