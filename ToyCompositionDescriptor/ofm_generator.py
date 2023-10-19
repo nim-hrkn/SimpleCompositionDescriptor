@@ -35,7 +35,7 @@ def obtain_ofm_1d_columns(is_ofm1=True):
 
     for v1 in v:
         for h1 in h:
-            vh.append("_".join(["ofm",v1, h1]))
+            vh.append("_".join(["ofm", v1, h1]))
     return vh
 
 
