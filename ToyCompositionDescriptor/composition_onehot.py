@@ -161,14 +161,11 @@ class ElementOneHotGenerator:
 
         try:
             one_hot = self._transform(chemical_formula)
-        except KeyError:
-            print("KeyError", chemical_formula)
+        except (AttributeError, KeyError, ValueError) as e:
+            print(e, "for", chemical_formula)
             N = len(self.keys)
             one_hot = np.full(N, None)
-        except ValueError:
-            print("ValueError", chemical_formula)
-            N = len(self.keys)
-            one_hot = np.full(N, None)
+
         return one_hot
 
     def transform(self, chemical_formula: str) -> ElementOneHotRepresentation:

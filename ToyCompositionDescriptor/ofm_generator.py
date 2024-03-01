@@ -39,17 +39,31 @@ def obtain_ofm_1d_columns(is_ofm1=True):
     return vh
 
 
-def obtain_df_ofm_1d(v: ArrayLike):
+def obtain_df_ofm_1d(v: ArrayLike = None, is_ofm1=True):
+    if v is None:
+        n = len(GENERAL_ELECTRON_SUBSHELLS)
+        if is_ofm1:
+            v = np.zeros(n*(n+1))
+        else:
+            v = np.zeros(n*n)
     _obtain_df_ofm_1d = pd.DataFrame(v, index=obtain_ofm_1d_columns()).T
     return _obtain_df_ofm_1d
 
 
-def obtain_df_ofm_2d(v: ArrayLike):
-    n = len(GENERAL_ELECTRON_SUBSHELLS)
-    columns = ["C"]
-    columns.extend(GENERAL_ELECTRON_SUBSHELLS)
-    v = v.reshape(n + 1, n)
-    _df = pd.DataFrame(v, columns=GENERAL_ELECTRON_SUBSHELLS, index=columns)
+def obtain_df_ofm_2d(v: ArrayLike = None, is_ofm1=True):
+    if is_ofm1:
+        index = ["C"]
+    else:
+        index = []
+    index.extend(GENERAL_ELECTRON_SUBSHELLS)
+    n1 = len(index)
+    n2 = len(GENERAL_ELECTRON_SUBSHELLS)
+    print(n1,n2)
+    if v is None:
+        v = np.zeros( (n1,n2) )
+    else:
+        v = v.reshape( (n1,n2) )
+    _df = pd.DataFrame(v, columns=GENERAL_ELECTRON_SUBSHELLS, index=index)
     return _df
 
 
