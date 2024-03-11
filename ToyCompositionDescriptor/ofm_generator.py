@@ -266,7 +266,8 @@ def ofm_alloy(
             neigh_vector = np.zeros(N)
             for nn_specie, nn_frac in site_x.species.as_dict().items():
                 neigh_vector += (
-                    get_element_representation(nn_specie, is_adding_row=is_adding_row) * nn_frac
+                    get_element_representation(nn_specie, is_adding_row=is_adding_row)
+                    * nn_frac
                 )
 
             d = np.sqrt(np.sum((site.coords - site_x.coords) ** 2))
@@ -313,27 +314,41 @@ class OFMFeatureRepresentation:
 
     KEYS = ["mean", "locals"]
 
-    def __init__(self, result: dict, is_ofm1, is_adding_row, is_including_d):
+    def __init__(
+        self, result: dict, is_ofm1, is_adding_row, is_including_d, check_strictly=True
+    ):
         """
         Initialize an OFMFeatureRepresentation object.
 
         Args:
             result (dict): Dictionary containing OFM descriptor results.
+            is_ofm1 (bool): OFM parameter
+            is_adding_row (bool): OFM parameter
+            is_including_d (bool): OFM parameter
+            check_strictly (bool, optional):  check the keys of `result` stricutly.
 
         Raises:
             RuntimeError: If the result does not have the required keys.
         """
-        dict_keys = list(result.keys())
+        self.result = None
         self.is_ofm1 = is_ofm1
         self.is_adding_row = is_adding_row
         self.is_including_d = is_including_d
-        flags = ["mean" in dict_keys, "locals" in dict_keys, "cif" in dict_keys]
-        if np.all(flags):
-            self.result = result
-        else:
-            raise RuntimeError(
-                "result must be dict type with mean, locals, atoms and cif keys"
-            )
+        if check_strictly:
+            dict_keys = list(result.keys())
+            flags = ["mean" in dict_keys, "locals" in dict_keys, "cif" in dict_keys]
+            if np.all(flags):
+                self.result = result
+            else:
+                raise RuntimeError(
+                    "result must be dict type with mean, locals, atoms and cif keys"
+                )
+
+    @property
+    def columns_1d(self):
+        is_ofm1 = self.is_ofm1
+        is_adding_row = self.is_adding_row
+        return obtain_ofm_1d_columns(is_ofm1=is_ofm1, is_adding_row=is_adding_row)
 
     def validate_key(self, key):
         """
