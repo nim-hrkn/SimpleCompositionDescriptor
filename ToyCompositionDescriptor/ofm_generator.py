@@ -76,16 +76,29 @@ class ofmColumns:
         return self._general_electron_subshells
 
 
-def obtain_ofm_1d_columns(is_ofm1=IS_OFM1, is_adding_row=IS_ADDING_ROW):
+import warnings
+import functools
+
+
+def deprecated(func):
+    """Decorator to mark functions as deprecated."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        warnings.warn(f"{func.__name__} is deprecated and will be removed in a future version.", category=DeprecationWarning, stacklevel=2)
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def _obtain_ofm_1d_columns(is_ofm1=IS_OFM1, is_adding_row=IS_ADDING_ROW):
     if is_ofm1:
         v = [
             "C",
         ]
     else:
         v = []
-    general_electron_subshells = ofmColumns(
-        is_adding_row=is_adding_row
-    ).general_electron_subshells
+    general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
     v.extend(general_electron_subshells)
     h = copy.deepcopy(general_electron_subshells)
     vh = []
@@ -96,17 +109,20 @@ def obtain_ofm_1d_columns(is_ofm1=IS_OFM1, is_adding_row=IS_ADDING_ROW):
     return vh
 
 
+@deprecated
+def obtain_ofm_1d_columns(is_ofm1=IS_OFM1, is_adding_row=IS_ADDING_ROW):
+    return _obtain_ofm_1d_columns(is_ofm1, is_adding_row)
+
+
 def obtain_df_ofm_1d(v: ArrayLike = None, is_ofm1=IS_OFM1, is_adding_row=IS_ADDING_ROW):
     if v is None:
-        general_electron_subshells = ofmColumns(
-            is_adding_row=is_adding_row
-        ).general_electron_subshells
+        general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
         n = len(general_electron_subshells)
         if is_ofm1:
             v = np.zeros(n * (n + 1))
         else:
             v = np.zeros(n * n)
-    _obtain_df_ofm_1d = pd.DataFrame(v, index=obtain_ofm_1d_columns()).T
+    _obtain_df_ofm_1d = pd.DataFrame(v, index=_obtain_ofm_1d_columns(is_ofm1, is_adding_row)).T
     return _obtain_df_ofm_1d
 
 
@@ -115,9 +131,7 @@ def obtain_df_ofm_2d(v: ArrayLike = None, is_ofm1=IS_OFM1, is_adding_row=IS_ADDI
         index = ["C"]
     else:
         index = []
-    general_electron_subshells = ofmColumns(
-        is_adding_row=is_adding_row
-    ).general_electron_subshells
+    general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
     index.extend(general_electron_subshells)
     n1 = len(index)
     n2 = len(general_electron_subshells)
@@ -136,9 +150,7 @@ def get_element_representation(name="Si", is_adding_row=IS_ADDING_ROW):
     """
     element = Element(name)
 
-    general_electron_subshells = ofmColumns(
-        is_adding_row=is_adding_row
-    ).general_electron_subshells
+    general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
 
     general_element_electronic = {}
     for _name in general_electron_subshells:
@@ -151,10 +163,7 @@ def get_element_representation(name="Si", is_adding_row=IS_ADDING_ROW):
     else:
         # element_electronic_structure = [''.join(pair) for pair in re.findall("\.\d(\w+)<sup>(\d+)</sup>",
         #                                                                     element.electronic_structure)]
-        element_electronic_structure = [
-            "".join(pair)
-            for pair in re.findall(r"\.\d(\w+)(\d+)", element.electronic_structure)
-        ]
+        element_electronic_structure = ["".join(pair) for pair in re.findall(r"\.\d(\w+)(\d+)", element.electronic_structure)]
 
     for eletron_subshell in element_electronic_structure:
         general_element_electronic[eletron_subshell] = 1.0
@@ -162,23 +171,17 @@ def get_element_representation(name="Si", is_adding_row=IS_ADDING_ROW):
         irow = element.row
         general_element_electronic[ROW[irow - 1]] = 1.0
 
-    v = np.array(
-        [general_element_electronic[key] for key in general_electron_subshells]
-    )
+    v = np.array([general_element_electronic[key] for key in general_electron_subshells])
     return v
     # return pd.DataFrame([v], columns=general_electron_subshells)
 
 
-def ofm(
-    struct: Structure, is_ofm1=IS_OFM1, is_including_d=True, is_adding_row=IS_ADDING_ROW
-):
+def ofm(struct: Structure, is_ofm1=IS_OFM1, is_including_d=True, is_adding_row=IS_ADDING_ROW):
     atoms = np.array([site.species_string for site in struct])
 
     # local_xyz = []
     local_orbital_field_matrices = []
-    general_electron_subshells = ofmColumns(
-        is_adding_row=is_adding_row
-    ).general_electron_subshells
+    general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
     N = len(general_electron_subshells)
     for i_atom, atom in enumerate(atoms):
 
@@ -199,9 +202,7 @@ def ofm(
             site_x_label = site_x.species_string
             # atom_xyz += [site_x_label]
             # coords_xyz += [site_x.coords]
-            neigh_vector = get_element_representation(
-                site_x_label, is_adding_row=is_adding_row
-            )
+            neigh_vector = get_element_representation(site_x_label, is_adding_row=is_adding_row)
 
             if is_including_d:
                 d = np.sqrt(np.sum((site.coords - site_x.coords) ** 2))
@@ -230,15 +231,11 @@ def ofm(
     }
 
 
-def ofm_alloy(
-    struct: Structure, is_ofm1=IS_OFM1, is_including_d=True, is_adding_row=IS_ADDING_ROW
-):
+def ofm_alloy(struct: Structure, is_ofm1=IS_OFM1, is_including_d=True, is_adding_row=IS_ADDING_ROW):
 
     # local_xyz = []
     local_orbital_field_matrices = []
-    general_electron_subshells = ofmColumns(
-        is_adding_row=is_adding_row
-    ).general_electron_subshells
+    general_electron_subshells = ofmColumns(is_adding_row=is_adding_row).general_electron_subshells
     N = len(general_electron_subshells)
     # for i_atom, atom in enumerate(atoms):
     for i_atom, site in enumerate(struct):
@@ -265,10 +262,7 @@ def ofm_alloy(
             # coords_xyz += [site_x.coords]
             neigh_vector = np.zeros(N)
             for nn_specie, nn_frac in site_x.species.as_dict().items():
-                neigh_vector += (
-                    get_element_representation(nn_specie, is_adding_row=is_adding_row)
-                    * nn_frac
-                )
+                neigh_vector += get_element_representation(nn_specie, is_adding_row=is_adding_row) * nn_frac
 
             d = np.sqrt(np.sum((site.coords - site_x.coords) ** 2))
             if is_including_d:
@@ -281,9 +275,7 @@ def ofm_alloy(
 
         local_matrix = center_vector[None, :] * env_vector[:, None]
 
-        local_matrix = np.ravel(
-            local_matrix
-        )  # ravel to make N*N- or N*(N+1)-Dimensional vector
+        local_matrix = np.ravel(local_matrix)  # ravel to make N*N- or N*(N+1)-Dimensional vector
         local_orbital_field_matrices.append(local_matrix)
         # local_xyz.append({"atoms": np.array(atom_xyz), "coords": np.array(coords_xyz)})
 
@@ -314,9 +306,7 @@ class OFMFeatureRepresentation:
 
     KEYS = ["mean", "locals"]
 
-    def __init__(
-        self, result: dict, is_ofm1, is_adding_row, is_including_d, check_strictly=True
-    ):
+    def __init__(self, result: dict, is_ofm1, is_adding_row, is_including_d, check_strictly=True):
         """
         Initialize an OFMFeatureRepresentation object.
 
@@ -340,15 +330,13 @@ class OFMFeatureRepresentation:
             if np.all(flags):
                 self.result = result
             else:
-                raise RuntimeError(
-                    "result must be dict type with mean, locals, atoms and cif keys"
-                )
+                raise RuntimeError("result must be dict type with mean, locals, atoms and cif keys")
 
     @property
     def columns_1d(self):
         is_ofm1 = self.is_ofm1
         is_adding_row = self.is_adding_row
-        return obtain_ofm_1d_columns(is_ofm1=is_ofm1, is_adding_row=is_adding_row)
+        return _obtain_ofm_1d_columns(is_ofm1=is_ofm1, is_adding_row=is_adding_row)
 
     def validate_key(self, key):
         """
@@ -398,9 +386,7 @@ class OFMFeatureRepresentation:
             ValueError: If the provided key is not in the allowed KEYS.
         """
         self.validate_key(key)
-        general_electron_subshells = ofmColumns(
-            is_adding_row=self.is_adding_row
-        ).general_electron_subshells
+        general_electron_subshells = ofmColumns(is_adding_row=self.is_adding_row).general_electron_subshells
         n = len(general_electron_subshells)
         v = self.result[key]
         if self.is_ofm1:
